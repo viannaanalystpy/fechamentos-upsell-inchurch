@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 Autenticação Google OAuth 2.0 — restringe acesso a emails @inchurch.com.br
-Sessão persistida em cookie (7 dias) para sobreviver a recarregamentos de página.
+Sessão persistida em cookie (1 dia) para sobreviver a recarregamentos de página.
 """
 import secrets as _secrets
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
-import extra_streamlit_components as stx
 import requests
 import streamlit as st
+from streamlit_cookies_controller import CookieController
 
 ALLOWED_DOMAIN = "inchurch.com.br"
 _COOKIE_EMAIL  = "ic_user_email"
@@ -17,8 +17,11 @@ _COOKIE_NAME   = "ic_user_name"
 _COOKIE_DAYS   = 1
 
 
-def _cookie_manager():
-    return stx.CookieManager(key="ic_cookie_mgr")
+def _get_controller():
+    """Retorna instância única do CookieController por sessão."""
+    if "_cookie_ctrl" not in st.session_state:
+        st.session_state["_cookie_ctrl"] = CookieController()
+    return st.session_state["_cookie_ctrl"]
 
 
 def _secrets_google():
@@ -72,20 +75,20 @@ def check_login():
     - Se callback do Google: valida, persiste em session + cookie.
     - Se não autenticado: exibe tela de login e chama st.stop().
     """
-    cm = _cookie_manager()
+    ctrl = _get_controller()
 
     # 1. Já autenticado nesta sessão (mais rápido)
     if st.session_state.get("user_email"):
-        _render_badge(cm)
+        _render_badge(ctrl)
         return
 
     # 2. Cookie persistido de sessão anterior
-    email_cookie = cm.get(_COOKIE_EMAIL)
-    name_cookie  = cm.get(_COOKIE_NAME)
+    email_cookie = ctrl.get(_COOKIE_EMAIL)
+    name_cookie  = ctrl.get(_COOKIE_NAME)
     if email_cookie:
         st.session_state["user_email"] = email_cookie
         st.session_state["user_name"]  = name_cookie or email_cookie
-        _render_badge(cm)
+        _render_badge(ctrl)
         return
 
     client_id, client_secret, redirect_uri = _secrets_google()
@@ -117,8 +120,8 @@ def check_login():
 
         st.session_state["user_email"] = email
         st.session_state["user_name"]  = name
-        cm.set(_COOKIE_EMAIL, email, expires_at=expiry)
-        cm.set(_COOKIE_NAME,  name,  expires_at=expiry)
+        ctrl.set(_COOKIE_EMAIL, email, max_age=int(timedelta(days=_COOKIE_DAYS).total_seconds()))
+        ctrl.set(_COOKIE_NAME,  name,  max_age=int(timedelta(days=_COOKIE_DAYS).total_seconds()))
         st.query_params.clear()
         st.rerun()
 
@@ -143,7 +146,7 @@ def check_login():
     st.stop()
 
 
-def _render_badge(cm=None):
+def _render_badge(ctrl=None):
     name = st.session_state.get("user_name", st.session_state.get("user_email", ""))
     with st.sidebar:
         st.markdown(
@@ -151,15 +154,9 @@ def _render_badge(cm=None):
             unsafe_allow_html=True,
         )
         if st.button("Sair", key="_logout_btn"):
-            if cm:
-                try:
-                    cm.delete(_COOKIE_EMAIL)
-                except KeyError:
-                    pass
-                try:
-                    cm.delete(_COOKIE_NAME)
-                except KeyError:
-                    pass
-            for k in ("user_email", "user_name", "_oauth_state"):
+            if ctrl:
+                ctrl.remove(_COOKIE_EMAIL)
+                ctrl.remove(_COOKIE_NAME)
+            for k in ("user_email", "user_name", "_oauth_state", "_cookie_ctrl"):
                 st.session_state.pop(k, None)
             st.rerun()

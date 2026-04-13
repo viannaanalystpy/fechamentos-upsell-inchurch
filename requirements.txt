@@ -1,5 +1,5 @@
 streamlit>=1.35.0
-extra-streamlit-components>=0.1.60
+streamlit-cookies-controller>=0.4.0
 google-cloud-bigquery>=3.11.0
 google-auth>=2.29.0
 db-dtypes>=1.1.0
