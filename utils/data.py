@@ -59,7 +59,7 @@ def load_fechamentos() -> pd.DataFrame:
         FROM `{PROJECT}.{DATASET}.{TABELA}` f
         LEFT JOIN `{PROJECT}.Splgc.splgc-clientes-inchurch` c
           ON CAST(f.superlogica_id AS STRING) = CAST(c.id_sacado_sac AS STRING)
-        WHERE f.first_payment >= '2024-01-01'
+        WHERE f.first_payment >= '2026-01-01'
         ORDER BY first_payment
     """
     df = client.query(query).to_dataframe()
