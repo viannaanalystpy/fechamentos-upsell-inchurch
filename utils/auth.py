@@ -1,14 +1,24 @@
 # -*- coding: utf-8 -*-
 """
 Autenticação Google OAuth 2.0 — restringe acesso a emails @inchurch.com.br
+Sessão persistida em cookie (7 dias) para sobreviver a recarregamentos de página.
 """
 import secrets as _secrets
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
+import extra_streamlit_components as stx
 import requests
 import streamlit as st
 
 ALLOWED_DOMAIN = "inchurch.com.br"
+_COOKIE_EMAIL  = "ic_user_email"
+_COOKIE_NAME   = "ic_user_name"
+_COOKIE_DAYS   = 1
+
+
+def _cookie_manager():
+    return stx.CookieManager(key="ic_cookie_mgr")
 
 
 def _secrets_google():
@@ -58,18 +68,29 @@ def _get_user_info(access_token: str) -> dict:
 def check_login():
     """
     Chama no topo de cada página.
-    - Se autenticado: renderiza badge do usuário na sidebar e retorna.
-    - Se callback do Google: valida e persiste na sessão.
+    - Se autenticado (session ou cookie): renderiza badge e retorna.
+    - Se callback do Google: valida, persiste em session + cookie.
     - Se não autenticado: exibe tela de login e chama st.stop().
     """
-    # Já autenticado nesta sessão
+    cm = _cookie_manager()
+
+    # 1. Já autenticado nesta sessão (mais rápido)
     if st.session_state.get("user_email"):
-        _render_badge()
+        _render_badge(cm)
+        return
+
+    # 2. Cookie persistido de sessão anterior
+    email_cookie = cm.get(_COOKIE_EMAIL)
+    name_cookie  = cm.get(_COOKIE_NAME)
+    if email_cookie:
+        st.session_state["user_email"] = email_cookie
+        st.session_state["user_name"]  = name_cookie or email_cookie
+        _render_badge(cm)
         return
 
     client_id, client_secret, redirect_uri = _secrets_google()
 
-    # Callback do Google (code na URL)
+    # 3. Callback do Google (code na URL)
     params = st.query_params
     if "code" in params:
         with st.spinner("Autenticando..."):
@@ -80,7 +101,7 @@ def check_login():
             st.query_params.clear()
             st.rerun()
 
-        user = _get_user_info(token["access_token"])
+        user  = _get_user_info(token["access_token"])
         email = user.get("email", "")
 
         if not email.lower().endswith(f"@{ALLOWED_DOMAIN}"):
@@ -91,12 +112,17 @@ def check_login():
             st.query_params.clear()
             st.stop()
 
+        name   = user.get("name", email)
+        expiry = datetime.now() + timedelta(days=_COOKIE_DAYS)
+
         st.session_state["user_email"] = email
-        st.session_state["user_name"]  = user.get("name", email)
+        st.session_state["user_name"]  = name
+        cm.set(_COOKIE_EMAIL, email, expires_at=expiry)
+        cm.set(_COOKIE_NAME,  name,  expires_at=expiry)
         st.query_params.clear()
         st.rerun()
 
-    # Tela de login
+    # 4. Tela de login
     auth_url = _build_auth_url(client_id, redirect_uri)
 
     st.markdown("""
@@ -117,7 +143,7 @@ def check_login():
     st.stop()
 
 
-def _render_badge():
+def _render_badge(cm=None):
     name = st.session_state.get("user_name", st.session_state.get("user_email", ""))
     with st.sidebar:
         st.markdown(
@@ -125,6 +151,9 @@ def _render_badge():
             unsafe_allow_html=True,
         )
         if st.button("Sair", key="_logout_btn"):
+            if cm:
+                cm.delete(_COOKIE_EMAIL)
+                cm.delete(_COOKIE_NAME)
             for k in ("user_email", "user_name", "_oauth_state"):
                 st.session_state.pop(k, None)
             st.rerun()
