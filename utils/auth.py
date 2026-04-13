@@ -152,8 +152,14 @@ def _render_badge(cm=None):
         )
         if st.button("Sair", key="_logout_btn"):
             if cm:
-                cm.delete(_COOKIE_EMAIL)
-                cm.delete(_COOKIE_NAME)
+                try:
+                    cm.delete(_COOKIE_EMAIL)
+                except KeyError:
+                    pass
+                try:
+                    cm.delete(_COOKIE_NAME)
+                except KeyError:
+                    pass
             for k in ("user_email", "user_name", "_oauth_state"):
                 st.session_state.pop(k, None)
             st.rerun()
