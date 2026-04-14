@@ -59,6 +59,11 @@ with st.sidebar:
     planos = ["Todos"] + sorted(df_raw["plan"].dropna().replace("", pd.NA).dropna().unique().tolist())
     plano_sel = st.selectbox("Plano", planos, key="plano_sel")
 
+    st.divider()
+    if st.button("Atualizar dados", use_container_width=True, key="refresh_btn"):
+        st.cache_data.clear()
+        st.rerun()
+
 # ── Aplicar filtros ───────────────────────────────────────────────────────────
 cutoff_12m = pd.Timestamp.today().normalize() - relativedelta(months=12)
 

@@ -20,6 +20,12 @@ from utils.auth import check_login
 inject_css()
 check_login()
 
+with st.sidebar:
+    st.divider()
+    if st.button("Atualizar dados", use_container_width=True, key="refresh_div_btn"):
+        st.cache_data.clear()
+        st.rerun()
+
 st.markdown("<h1>Divergências <span>Sheets vs BQ</span></h1>", unsafe_allow_html=True)
 
 # ── Constantes ────────────────────────────────────────────────────────────────
