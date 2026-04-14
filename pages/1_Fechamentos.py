@@ -316,6 +316,8 @@ def _origem(fonte):
         return "Upsell Painel"
     if "form" in f:
         return "Upsell Formulário"
+    if "splgc" in f:
+        return "Fechamento SPLGC"
     return "Fechamento"
 
 # Seleciona apenas as colunas necessárias de df_unique_hist antes do merge
