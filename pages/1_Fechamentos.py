@@ -307,30 +307,32 @@ df_rev = df_monetary_hist.groupby("tertiarygroup_id").agg(
     setup_total=("setup", "sum"),
 ).reset_index()
 
-# Mapeia fonte → origem legível (3 categorias)
-def _origem(fonte):
-    if pd.isna(fonte) or fonte == "":
-        return "Fechamento"
-    f = str(fonte).lower()
-    if "painel" in f:
+# Mapeia fonte + upsell → origem legível (3 categorias)
+def _origem(row):
+    fonte  = str(row.get("fonte", "") or "").lower()
+    upsell = row.get("upsell")
+    if "painel" in fonte:
         return "Upsell Painel"
-    if "form" in f:
+    if "form" in fonte:
         return "Upsell Formulário"
+    if upsell is True or str(upsell).lower() == "true":
+        return "Upsell"
     return "Fechamento"
 
 # Seleciona apenas as colunas necessárias de df_unique_hist antes do merge
 df_tabela = df_unique_hist[[
     "first_payment", "company_name", "tertiarygroup_id",
     "fyv", "sales_owner", "sdr_owner", "products",
-    "fonte", "conferencia_invalida",
+    "fonte", "upsell", "conferencia_invalida",
 ]].merge(df_rev, on="tertiarygroup_id", how="left")
 df_tabela = df_tabela[[
     "first_payment", "company_name", "tertiarygroup_id",
     "mrr", "setup_total", "fyv",
-    "sales_owner", "sdr_owner", "products", "fonte",
+    "sales_owner", "sdr_owner", "products", "fonte", "upsell",
     "conferencia_invalida",
 ]].copy()
-df_tabela["fonte"] = df_tabela["fonte"].apply(_origem)
+df_tabela["fonte"] = df_tabela.apply(_origem, axis=1)
+df_tabela = df_tabela.drop(columns="upsell")
 
 df_tabela.columns = [
     "Data 1º Pgto", "Igreja", "Cód. Local",
