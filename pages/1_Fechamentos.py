@@ -56,6 +56,9 @@ with st.sidebar:
     canais = ["Todos"] + sorted(df_raw["channel"].dropna().unique().tolist())
     canal_sel = st.selectbox("Canal", canais, key="canal_sel")
 
+    planos = ["Todos"] + sorted(df_raw["plan"].dropna().replace("", pd.NA).dropna().unique().tolist())
+    plano_sel = st.selectbox("Plano", planos, key="plano_sel")
+
 # ── Aplicar filtros ───────────────────────────────────────────────────────────
 cutoff_12m = pd.Timestamp.today().normalize() - relativedelta(months=12)
 
@@ -73,6 +76,8 @@ def apply_filters(src, include_date_cutoff=False):
         d = d[d["products"] == produto_sel]
     if canal_sel != "Todos":
         d = d[d["channel"] == canal_sel]
+    if plano_sel != "Todos":
+        d = d[d["plan"] == plano_sel]
     return d
 
 # df = dados p/ gráficos (últimos 12 meses quando "Todos"); df_hist = histórico completo p/ tabela
@@ -297,23 +302,35 @@ df_rev = df_monetary_hist.groupby("tertiarygroup_id").agg(
     setup_total=("setup", "sum"),
 ).reset_index()
 
+# Mapeia fonte → origem legível (3 categorias)
+def _origem(fonte):
+    if pd.isna(fonte) or fonte == "":
+        return "Fechamento"
+    f = str(fonte).lower()
+    if "painel" in f:
+        return "Upsell Painel"
+    if "form" in f:
+        return "Upsell Formulário"
+    return "Fechamento"
+
 # Seleciona apenas as colunas necessárias de df_unique_hist antes do merge
 df_tabela = df_unique_hist[[
     "first_payment", "company_name", "tertiarygroup_id",
     "fyv", "sales_owner", "sdr_owner", "products",
-    "channel", "plan", "conferencia_invalida",
+    "fonte", "conferencia_invalida",
 ]].merge(df_rev, on="tertiarygroup_id", how="left")
 df_tabela = df_tabela[[
     "first_payment", "company_name", "tertiarygroup_id",
     "mrr", "setup_total", "fyv",
-    "sales_owner", "sdr_owner", "products", "channel", "plan",
+    "sales_owner", "sdr_owner", "products", "fonte",
     "conferencia_invalida",
 ]].copy()
+df_tabela["fonte"] = df_tabela["fonte"].apply(_origem)
 
 df_tabela.columns = [
     "Data 1º Pgto", "Igreja", "Cód. Local",
     "MRR", "Setup", "FYV",
-    "Vendedor", "SDR", "Produto", "Canal", "Plano",
+    "Vendedor", "SDR", "Produto", "Origem",
     "Conferência Inválida",
 ]
 
