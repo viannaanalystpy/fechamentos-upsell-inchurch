@@ -164,12 +164,12 @@ with k1:
     st.metric("Total de Deals", f"{total_deals:,}", delta=delta_str(curr, prev))
 with k2:
     curr = last_val(df_mes_kpi, "mrr"); prev = prev_val(df_mes_kpi, "mrr")
-    st.metric("MRR Total", fmt_brl(total_mrr), delta=delta_str(curr, prev, suffix=" vs mês ant."))
+    st.metric("MRR Total", fmt_brl(total_mrr, decimals=2), delta=delta_str(curr, prev, suffix=" vs mês ant."))
 with k3:
-    st.metric("Setup Total", fmt_brl(total_setup))
+    st.metric("Setup Total", fmt_brl(total_setup, decimals=2))
 with k4:
     curr = last_val(df_mes_kpi, "fyv_sum"); prev = prev_val(df_mes_kpi, "fyv_sum")
-    st.metric("FYV Total", fmt_brl(total_fyv), delta=delta_str(curr, prev, suffix=" vs mês ant."))
+    st.metric("FYV Total", fmt_brl(total_fyv, decimals=2), delta=delta_str(curr, prev, suffix=" vs mês ant."))
 
 st.divider()
 
