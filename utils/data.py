@@ -107,6 +107,25 @@ def load_fechamentos() -> pd.DataFrame:
             problemas.append("; ".join(erros) if erros else "")
         df["conferencia_invalida"] = problemas
 
+        # Propagar alertas: se qualquer linha de um church/mês tem alerta,
+        # mostrar também na linha de prioridade (evita perder alertas do backend
+        # quando um ajuste manual sem first_setup_value ganha a deduplicação)
+        def _merge_erros(series):
+            todos = set()
+            for s in series:
+                if s:
+                    todos.update(e.strip() for e in s.split(";") if e.strip())
+            return "; ".join(sorted(todos))
+
+        invalido_map = (
+            df.groupby(["tertiarygroup_id", "mes"])["conferencia_invalida"]
+            .apply(_merge_erros)
+            .to_dict()
+        )
+        df["conferencia_invalida"] = df.apply(
+            lambda r: invalido_map.get((r["tertiarygroup_id"], r["mes"]), ""), axis=1
+        )
+
     return df
 
 
