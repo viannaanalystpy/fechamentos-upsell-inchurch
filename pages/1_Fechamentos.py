@@ -12,7 +12,7 @@ st.set_page_config(
 st.session_state["_page_key"] = "fechamentos"
 
 from utils.style import inject_css, chart_layout, PALETTE, FONTE_COLORS, PRODUTO_COLORS, PLAN_COLORS
-from utils.data import load_fechamentos, load_metas, fmt_brl, mes_fmt_ordered, last_val, prev_val, delta_str, no_data
+from utils.data import load_fechamentos, load_metas, load_ultima_atualizacao, fmt_brl, mes_fmt_ordered, last_val, prev_val, delta_str, no_data
 from utils.auth import check_login
 
 inject_css()
@@ -142,6 +142,8 @@ df_monetary_hist = (
 df_hist = df_hist.drop(columns="_rank")
 
 # ── Header ───────────────────────────────────────────────────────────────────
+ultima_atualizacao = load_ultima_atualizacao()
+st.caption(f"Última atualização dos dados: {ultima_atualizacao}")
 st.markdown("<h1>Fechamento <span>de Vendas</span></h1>", unsafe_allow_html=True)
 
 # ── KPIs ─────────────────────────────────────────────────────────────────────
@@ -192,7 +194,7 @@ fig1.add_bar(
     x=df_fyv_mes["mes_fmt"], y=df_fyv_mes["fyv"],
     name="FYV Realizado",
     marker_color=PALETTE[0],
-    text=df_fyv_mes["fyv"].apply(lambda v: fmt_brl(v)),
+    text=df_fyv_mes["fyv"].apply(lambda v: fmt_brl(v, decimals=2)),
     textposition="outside",
     textfont=dict(size=10, color="#a0a0a0"),
     hovertemplate="<b>FYV</b><br>R$ %{y:,.0f}<extra></extra>",
@@ -229,7 +231,7 @@ fig2.add_bar(
     x=df_mrr_mes["mes_fmt"], y=df_mrr_mes["mrr"],
     name="MRR",
     marker_color=PALETTE[0],
-    text=df_mrr_mes["mrr"].apply(lambda v: fmt_brl(v)),
+    text=df_mrr_mes["mrr"].apply(lambda v: fmt_brl(v, decimals=2)),
     textposition="outside",
     textfont=dict(size=10, color="#a0a0a0"),
     hovertemplate="<b>MRR</b><br>R$ %{y:,.2f}<extra></extra>",

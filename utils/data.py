@@ -159,6 +159,17 @@ def load_metas() -> pd.DataFrame:
 
 # ---------- helpers ----------
 
+@st.cache_data(ttl=3600)
+def load_ultima_atualizacao() -> str:
+    try:
+        client = _bq_client()
+        table = client.get_table(f"{PROJECT}.{DATASET}.{TABELA}")
+        ts = table.modified  # datetime com timezone
+        return ts.strftime("%d/%m/%Y %H:%M")
+    except Exception:
+        return "—"
+
+
 def fmt_brl(value, decimals=0) -> str:
     s = f"{value:,.{decimals}f}"
     return "R$ " + s.replace(",", "X").replace(".", ",").replace("X", ".")
