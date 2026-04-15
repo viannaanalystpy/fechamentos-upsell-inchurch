@@ -97,7 +97,7 @@ if df.empty and df_hist.empty:
 df = df if not df.empty else df_hist
 
 # ── Deduplicação ─────────────────────────────────────────────────────────────
-fonte_order = {"SPLGC": 0, "Fechamentos Backend": 1, "HubSpot": 2, "Ajustes manuais": 3}
+fonte_order = {"Ajustes manuais": 0, "SPLGC": 1, "Fechamentos Backend": 2, "HubSpot": 3}
 df["_rank"] = df["fonte"].map(fonte_order).fillna(99)
 
 # df_unique: 1 linha por deal (para contagem e tabela)
