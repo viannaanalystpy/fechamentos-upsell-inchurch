@@ -308,16 +308,20 @@ df_rev = df_monetary_hist.groupby("tertiarygroup_id").agg(
     fyv_total=("fyv", "sum"),
 ).reset_index()
 
-# Mapeia fonte → origem legível (3 categorias: Novo / Upsell Painel / Upsell Formulário)
+# Mapeia fonte → origem legível
 def _origem(fonte):
     if pd.isna(fonte) or fonte == "":
-        return "Novo"
+        return "Novo · HubSpot"
     f = str(fonte).lower()
     if "painel" in f:
         return "Upsell Painel"
     if "form" in f:
         return "Upsell Formulário"
-    return "Novo"  # SPLGC, Fechamentos Backend (HubSpot), Ajustes manuais
+    if "splgc" in f:
+        return "Novo · SPLGC"
+    if "manual" in f or "ajuste" in f:
+        return "Novo · Manual"
+    return "Novo · HubSpot"  # Fechamentos Backend, HubSpot
 
 # Seleciona apenas as colunas necessárias de df_unique_hist antes do merge
 df_tabela = df_unique_hist[[
@@ -372,7 +376,9 @@ if not invalidos.empty:
 
 st.caption(
     "**Legenda — Origem:** "
-    "**Novo** = cliente novo captado via Superlógica (SPLGC), HubSpot (Fechamentos Backend) ou ajuste manual · "
+    "**Novo · SPLGC** = cliente novo captado via Superlógica · "
+    "**Novo · HubSpot** = cliente novo captado via HubSpot (Fechamentos Backend) · "
+    "**Novo · Manual** = cliente inserido via ajuste manual · "
     "**Upsell Painel** = cliente existente que fez upgrade pelo painel InChurch · "
     "**Upsell Formulário** = cliente existente que solicitou upgrade via formulário"
 )
