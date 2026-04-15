@@ -97,6 +97,12 @@ def load_fechamentos() -> pd.DataFrame:
                 erros.append("Plano ausente")
             if pd.isna(row["sales_owner"]) or row["sales_owner"] == "":
                 erros.append("Vendedor ausente")
+            if (
+                not pd.isna(row["setup"]) and row["setup"] > 0
+                and not pd.isna(row["first_setup_value"])
+                and row["first_setup_value"] < row["setup"] * 0.10
+            ):
+                erros.append("Setup < 10%")
             problemas.append("; ".join(erros) if erros else "")
         df["conferencia_invalida"] = problemas
 
