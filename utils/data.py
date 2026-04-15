@@ -162,9 +162,10 @@ def load_metas() -> pd.DataFrame:
 @st.cache_data(ttl=3600)
 def load_ultima_atualizacao() -> str:
     try:
+        from datetime import timezone, timedelta
         client = _bq_client()
         table = client.get_table(f"{PROJECT}.{DATASET}.{TABELA}")
-        ts = table.modified  # datetime com timezone
+        ts = table.modified.astimezone(timezone(timedelta(hours=-3)))
         return ts.strftime("%d/%m/%Y %H:%M")
     except Exception:
         return "—"
