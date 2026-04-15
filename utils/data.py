@@ -101,6 +101,7 @@ def load_fechamentos() -> pd.DataFrame:
                 not pd.isna(row["setup"]) and row["setup"] > 0
                 and not pd.isna(row["first_setup_value"])
                 and row["first_setup_value"] < row["setup"] * 0.10
+                and str(row.get("fonte", "")).lower() != "ajustes manuais"
             ):
                 erros.append("Setup < 10%")
             problemas.append("; ".join(erros) if erros else "")
