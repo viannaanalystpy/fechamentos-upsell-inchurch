@@ -177,7 +177,7 @@ st.divider()
 st.markdown("<h2>FYV por Mes vs Meta</h2>", unsafe_allow_html=True)
 
 df_fyv_mes = (
-    df_unique.groupby("mes")["fyv"]
+    df_monetary.groupby("mes")["fyv"]
     .sum()
     .reset_index(name="fyv")
 )
@@ -305,6 +305,7 @@ st.markdown("<h2>Tabela de Fechamentos</h2>", unsafe_allow_html=True)
 df_rev = df_monetary_hist.groupby("tertiarygroup_id").agg(
     mrr=("value", "sum"),
     setup_total=("setup", "sum"),
+    fyv_total=("fyv", "sum"),
 ).reset_index()
 
 # Mapeia fonte → origem legível (3 categorias: Novo / Upsell Painel / Upsell Formulário)
@@ -321,23 +322,30 @@ def _origem(fonte):
 # Seleciona apenas as colunas necessárias de df_unique_hist antes do merge
 df_tabela = df_unique_hist[[
     "first_payment", "company_name", "tertiarygroup_id",
-    "fyv", "sales_owner", "sdr_owner", "products",
+    "sales_owner", "sdr_owner", "products",
     "fonte", "conferencia_invalida",
 ]].merge(df_rev, on="tertiarygroup_id", how="left")
 df_tabela = df_tabela[[
     "first_payment", "company_name", "tertiarygroup_id",
-    "mrr", "setup_total", "fyv",
+    "mrr", "setup_total", "fyv_total",
     "sales_owner", "sdr_owner", "products", "fonte",
     "conferencia_invalida",
 ]].copy()
 df_tabela["fonte"] = df_tabela["fonte"].apply(_origem)
 
-df_tabela.columns = [
-    "Data 1º Pgto", "Igreja", "Cód. Local",
-    "MRR", "Setup", "FYV",
-    "Vendedor", "SDR", "Produto", "Origem",
-    "Conferência Inválida",
-]
+df_tabela = df_tabela.rename(columns={
+    "first_payment": "Data 1º Pgto",
+    "company_name": "Igreja",
+    "tertiarygroup_id": "Cód. Local",
+    "mrr": "MRR",
+    "setup_total": "Setup",
+    "fyv_total": "FYV",
+    "sales_owner": "Vendedor",
+    "sdr_owner": "SDR",
+    "products": "Produto",
+    "fonte": "Origem",
+    "conferencia_invalida": "Conferência Inválida",
+})
 
 df_tabela = df_tabela.sort_values("Data 1º Pgto", ascending=False)
 df_tabela["Data 1º Pgto"] = pd.to_datetime(df_tabela["Data 1º Pgto"]).dt.strftime("%d/%m/%Y")
