@@ -169,8 +169,8 @@ _kpi_full_unique = (
 )
 _kpi_full = _kpi_full.merge(_kpi_full_unique, on="mes", how="left")
 
-# Mês de referência: último mês presente no filtro atual
-_last_mes = df_unique["mes"].max() if not df_unique.empty else None
+# Delta só aparece quando um mês específico está selecionado
+_last_mes = mes_sel  # None quando "Todos"
 _prev_mes = None
 if _last_mes is not None:
     meses_anteriores = _kpi_full[_kpi_full["mes"] < _last_mes]["mes"]
