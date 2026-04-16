@@ -33,7 +33,7 @@ def _bq_client() -> bigquery.Client:
         return bigquery.Client(project=PROJECT)
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def load_fechamentos() -> pd.DataFrame:
     client = _bq_client()
     query = f"""
