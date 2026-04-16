@@ -126,16 +126,16 @@ df = df.drop(columns="_rank")
 df_hist["_rank"] = df_hist["fonte"].map(fonte_order).fillna(99)
 df_unique_hist = (
     df_hist.sort_values("_rank")
-    .drop_duplicates(subset=["mes", "tertiarygroup_id"])
+    .drop_duplicates(subset=["id"])
     .drop(columns="_rank")
 )
 _min_rank_hist = (
-    df_hist.groupby(["mes", "tertiarygroup_id"])["_rank"]
+    df_hist.groupby(["mes", "tertiarygroup_id", "first_payment"])["_rank"]
     .min()
     .reset_index(name="_min_rank")
 )
 df_monetary_hist = (
-    df_hist.merge(_min_rank_hist, on=["mes", "tertiarygroup_id"])
+    df_hist.merge(_min_rank_hist, on=["mes", "tertiarygroup_id", "first_payment"])
     .pipe(lambda x: x[x["_rank"] == x["_min_rank"]])
     .drop(columns=["_rank", "_min_rank"])
 )
@@ -304,7 +304,7 @@ st.divider()
 st.markdown("<h2>Tabela de Fechamentos</h2>", unsafe_allow_html=True)
 
 # Tabela usa histórico completo (sem filtro de 12 meses)
-df_rev = df_monetary_hist.groupby("tertiarygroup_id").agg(
+df_rev = df_monetary_hist.groupby(["tertiarygroup_id", "first_payment"]).agg(
     mrr=("value", "sum"),
     setup_total=("setup", "sum"),
     fyv_total=("fyv", "sum"),
@@ -330,7 +330,7 @@ df_tabela = df_unique_hist[[
     "first_payment", "company_name", "tertiarygroup_id",
     "sales_owner", "sdr_owner", "products",
     "fonte", "conferencia_invalida",
-]].merge(df_rev, on="tertiarygroup_id", how="left")
+]].merge(df_rev, on=["tertiarygroup_id", "first_payment"], how="left")
 df_tabela = df_tabela[[
     "first_payment", "company_name", "tertiarygroup_id",
     "mrr", "setup_total", "fyv_total",
