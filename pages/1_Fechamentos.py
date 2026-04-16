@@ -329,8 +329,9 @@ st.markdown("<h2>Tabela de Fechamentos</h2>", unsafe_allow_html=True)
 # Tabela usa histórico completo (sem filtro de 12 meses)
 # Mapeia fonte + upsell → origem legível
 def _origem(row):
-    upsell = row.get("upsell") is True
-    from_ajuste = row.get("from_ajuste") is True
+    # str() para lidar com numpy.bool_ / pyarrow scalars (is True falha nesses tipos)
+    upsell = str(row.get("upsell")) == 'True'
+    from_ajuste = str(row.get("from_ajuste")) == 'True'
     fonte = row.get("fonte", "")
     f = str(fonte).lower() if not (pd.isna(fonte) if fonte is not None else True) else ""
 
