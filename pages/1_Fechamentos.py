@@ -307,7 +307,7 @@ st.markdown("<h2>Tabela de Fechamentos</h2>", unsafe_allow_html=True)
 # Mapeia fonte + upsell → origem legível
 def _origem(row):
     fonte = row["fonte"]
-    upsell = bool(row.get("upsell") or False)
+    upsell = row.get("upsell") is True
     if pd.isna(fonte) or fonte == "":
         return "Upsell Formulário" if upsell else "Novo · HubSpot"
     f = str(fonte).lower()
