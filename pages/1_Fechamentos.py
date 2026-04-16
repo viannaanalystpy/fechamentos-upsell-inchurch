@@ -304,12 +304,6 @@ st.divider()
 st.markdown("<h2>Tabela de Fechamentos</h2>", unsafe_allow_html=True)
 
 # Tabela usa histórico completo (sem filtro de 12 meses)
-df_rev = df_monetary_hist.groupby(["tertiarygroup_id", "first_payment"]).agg(
-    mrr=("value", "sum"),
-    setup_total=("setup", "sum"),
-    fyv_total=("fyv", "sum"),
-).reset_index()
-
 # Mapeia fonte → origem legível
 def _origem(fonte):
     if pd.isna(fonte) or fonte == "":
@@ -325,12 +319,18 @@ def _origem(fonte):
         return "Novo · Manual"
     return "Novo · HubSpot"  # Fechamentos Backend, HubSpot
 
-# Seleciona apenas as colunas necessárias de df_unique_hist antes do merge
+# Cada linha usa seus próprios valores (sem agregar por church+data)
 df_tabela = df_unique_hist[[
     "first_payment", "company_name", "tertiarygroup_id",
     "sales_owner", "sdr_owner", "products",
     "fonte", "conferencia_invalida",
-]].merge(df_rev, on=["tertiarygroup_id", "first_payment"], how="left")
+    "value", "setup", "fyv",
+]].copy()
+df_tabela = df_tabela.rename(columns={
+    "value": "mrr",
+    "setup": "setup_total",
+    "fyv": "fyv_total",
+})
 df_tabela = df_tabela[[
     "first_payment", "company_name", "tertiarygroup_id",
     "mrr", "setup_total", "fyv_total",
