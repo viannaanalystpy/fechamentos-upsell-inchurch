@@ -304,14 +304,18 @@ st.divider()
 st.markdown("<h2>Tabela de Fechamentos</h2>", unsafe_allow_html=True)
 
 # Tabela usa histórico completo (sem filtro de 12 meses)
-# Mapeia fonte → origem legível
-def _origem(fonte):
+# Mapeia fonte + upsell → origem legível
+def _origem(row):
+    fonte = row["fonte"]
+    upsell = row.get("upsell", False)
     if pd.isna(fonte) or fonte == "":
-        return "Novo · HubSpot"
+        return "Upsell Formulário" if upsell else "Novo · HubSpot"
     f = str(fonte).lower()
     if "painel" in f:
         return "Upsell Painel"
     if "form" in f:
+        return "Upsell Formulário"
+    if upsell:
         return "Upsell Formulário"
     if "splgc" in f:
         return "Novo · SPLGC"
@@ -324,20 +328,20 @@ df_tabela = df_unique_hist[[
     "first_payment", "company_name", "tertiarygroup_id",
     "sales_owner", "sdr_owner", "products",
     "fonte", "conferencia_invalida",
-    "value", "setup", "fyv",
+    "value", "setup", "fyv", "upsell",
 ]].copy()
 df_tabela = df_tabela.rename(columns={
     "value": "mrr",
     "setup": "setup_total",
     "fyv": "fyv_total",
 })
+df_tabela["fonte"] = df_tabela.apply(_origem, axis=1)
 df_tabela = df_tabela[[
     "first_payment", "company_name", "tertiarygroup_id",
     "mrr", "setup_total", "fyv_total",
     "sales_owner", "sdr_owner", "products", "fonte",
     "conferencia_invalida",
 ]].copy()
-df_tabela["fonte"] = df_tabela["fonte"].apply(_origem)
 
 df_tabela = df_tabela.rename(columns={
     "first_payment": "Data 1º Pgto",
