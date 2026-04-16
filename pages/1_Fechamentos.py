@@ -154,24 +154,42 @@ total_mrr   = df_monetary["value"].sum()
 total_setup = df_monetary["setup"].sum()
 total_fyv   = df_monetary.groupby("tertiarygroup_id")["fyv"].sum().sum()
 
-df_mes_kpi = df_unique.groupby("mes").agg(
-    deals=("tertiarygroup_id", "nunique"),
-).reset_index()
-df_mrr_kpi = df_monetary.groupby("mes").agg(mrr=("value", "sum"), fyv_sum=("fyv", "sum")).reset_index()
-df_mes_kpi = df_mes_kpi.merge(df_mrr_kpi, on="mes", how="left")
+# Delta sempre calculado sobre o histórico completo (ignora filtro de mês)
+# para que ao selecionar um mês específico o delta ainda apareça (mês selecionado vs anterior)
+df_monetary_full = df_monetary_hist.copy()
+_kpi_full = df_monetary_full.groupby("mes").agg(mrr=("value", "sum"), fyv_sum=("fyv", "sum")).reset_index()
+_kpi_full_unique = (
+    df_hist.drop_duplicates(subset=["mes", "tertiarygroup_id"])
+    .groupby("mes").agg(deals=("tertiarygroup_id", "nunique")).reset_index()
+)
+_kpi_full = _kpi_full.merge(_kpi_full_unique, on="mes", how="left")
+
+# Mês de referência: último mês presente no filtro atual
+_last_mes = df_unique["mes"].max() if not df_unique.empty else None
+_prev_mes = None
+if _last_mes is not None:
+    meses_anteriores = _kpi_full[_kpi_full["mes"] < _last_mes]["mes"]
+    _prev_mes = meses_anteriores.max() if not meses_anteriores.empty else None
+
+def _kpi_val(col, mes):
+    if mes is None: return None
+    row = _kpi_full[_kpi_full["mes"] == mes]
+    return row[col].iloc[0] if not row.empty else None
+
+_mes_label = f" vs {_prev_mes.strftime('%b/%y').capitalize()}" if _prev_mes is not None else ""
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    curr = last_val(df_mes_kpi, "deals"); prev = prev_val(df_mes_kpi, "deals")
-    st.metric("Total de Deals", f"{total_deals:,}", delta=delta_str(curr, prev))
+    curr = _kpi_val("deals", _last_mes); prev = _kpi_val("deals", _prev_mes)
+    st.metric("Total de Deals", f"{total_deals:,}", delta=delta_str(curr, prev, suffix=_mes_label))
 with k2:
-    curr = last_val(df_mes_kpi, "mrr"); prev = prev_val(df_mes_kpi, "mrr")
-    st.metric("MRR Total", fmt_brl(total_mrr, decimals=2), delta=delta_str(curr, prev, suffix=" vs mês ant."))
+    curr = _kpi_val("mrr", _last_mes); prev = _kpi_val("mrr", _prev_mes)
+    st.metric("MRR Total", fmt_brl(total_mrr, decimals=2), delta=delta_str(curr, prev, suffix=_mes_label))
 with k3:
     st.metric("Setup Total", fmt_brl(total_setup, decimals=2))
 with k4:
-    curr = last_val(df_mes_kpi, "fyv_sum"); prev = prev_val(df_mes_kpi, "fyv_sum")
-    st.metric("FYV Total", fmt_brl(total_fyv, decimals=2), delta=delta_str(curr, prev, suffix=" vs mês ant."))
+    curr = _kpi_val("fyv_sum", _last_mes); prev = _kpi_val("fyv_sum", _prev_mes)
+    st.metric("FYV Total", fmt_brl(total_fyv, decimals=2), delta=delta_str(curr, prev, suffix=_mes_label))
 
 st.divider()
 
