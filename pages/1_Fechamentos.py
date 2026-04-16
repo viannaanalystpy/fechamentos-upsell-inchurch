@@ -306,29 +306,27 @@ st.markdown("<h2>Tabela de Fechamentos</h2>", unsafe_allow_html=True)
 # Tabela usa histórico completo (sem filtro de 12 meses)
 # Mapeia fonte + upsell → origem legível
 def _origem(row):
-    fonte = row["fonte"]
     upsell = row.get("upsell") is True
-    if pd.isna(fonte) or fonte == "":
-        return "Upsell Formulário" if upsell else "Novo · HubSpot"
-    f = str(fonte).lower()
-    if "painel" in f:
-        return "Upsell Painel"
-    if "form" in f:
-        return "Upsell Formulário"
+    from_ajuste = row.get("from_ajuste") is True
+    fonte = row.get("fonte", "")
+    f = str(fonte).lower() if not (pd.isna(fonte) if fonte is not None else True) else ""
+
     if upsell:
-        return "Upsell Formulário"
-    if "splgc" in f:
-        return "Novo · SPLGC"
-    if "manual" in f or "ajuste" in f:
-        return "Novo · Manual"
-    return "Novo · HubSpot"  # Fechamentos Backend, HubSpot
+        label = "Upsell Painel" if "painel" in f else "Form de Upsell"
+    else:
+        label = "Form de Fechamentos"
+
+    if from_ajuste:
+        label += " · Ajustado"
+
+    return label
 
 # Cada linha usa seus próprios valores (sem agregar por church+data)
 df_tabela = df_unique_hist[[
     "first_payment", "company_name", "tertiarygroup_id",
     "sales_owner", "sdr_owner", "products",
     "fonte", "conferencia_invalida",
-    "value", "setup", "fyv", "upsell",
+    "value", "setup", "fyv", "upsell", "from_ajuste",
 ]].copy()
 df_tabela = df_tabela.rename(columns={
     "value": "mrr",

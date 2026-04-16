@@ -55,10 +55,13 @@ def load_fechamentos() -> pd.DataFrame:
             COALESCE(f.company_name, c.st_nome_sac) AS company_name,
             f.upsell,
             f.new_deal,
-            DATE_TRUNC(DATE(f.first_payment), MONTH) AS mes
+            DATE_TRUNC(DATE(f.first_payment), MONTH) AS mes,
+            (aj.id IS NOT NULL) AS from_ajuste
         FROM `{PROJECT}.{DATASET}.{TABELA}` f
         LEFT JOIN `{PROJECT}.Splgc.splgc-clientes-inchurch` c
           ON CAST(f.superlogica_id AS STRING) = CAST(c.id_sacado_sac AS STRING)
+        LEFT JOIN `{PROJECT}.{DATASET}.ajustes_fechamentos` aj
+          ON f.id = aj.id
         WHERE f.first_payment >= '2026-01-01'
         ORDER BY first_payment
     """
