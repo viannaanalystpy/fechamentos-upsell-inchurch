@@ -380,9 +380,8 @@ if not invalidos.empty:
 
 st.caption(
     "**Legenda — Origem:** "
-    "**Novo · SPLGC** = cliente novo captado via Superlógica · "
-    "**Novo · HubSpot** = cliente novo captado via HubSpot (Fechamentos Backend) · "
-    "**Novo · Manual** = cliente inserido via ajuste manual · "
+    "**Form de Fechamentos** = cliente novo captado pelo processo comercial · "
     "**Upsell Painel** = cliente existente que fez upgrade pelo painel InChurch · "
-    "**Upsell Formulário** = cliente existente que solicitou upgrade via formulário"
+    "**Form de Upsell** = cliente existente que solicitou upgrade via formulário · "
+    "**· Ajustado** = dados corrigidos ou inseridos manualmente na planilha de ajustes"
 )
