@@ -98,7 +98,8 @@ def load_fechamentos() -> pd.DataFrame:
             erros = []
             if pd.isna(row["plan"]) or row["plan"] == "":
                 erros.append("Plano ausente")
-            if pd.isna(row["sales_owner"]) or row["sales_owner"] == "":
+            is_upsell_painel = "painel" in str(row.get("fonte", "")).lower()
+            if not is_upsell_painel and (pd.isna(row["sales_owner"]) or row["sales_owner"] == ""):
                 erros.append("Vendedor ausente")
             if (
                 not pd.isna(row["setup"]) and row["setup"] > 0
