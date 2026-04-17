@@ -3,20 +3,8 @@ import plotly.graph_objects as go
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-st.set_page_config(
-    page_title="Fechamentos | InChurch",
-    page_icon="📊",
-    layout="wide",
-)
-
-st.session_state["_page_key"] = "fechamentos"
-
 from utils.style import inject_css, chart_layout, PALETTE, FONTE_COLORS, PRODUTO_COLORS, PLAN_COLORS
 from utils.data import load_fechamentos, load_metas, load_ultima_atualizacao, fmt_brl, mes_fmt_ordered, last_val, prev_val, delta_str, no_data
-from utils.auth import check_login
-
-inject_css()
-check_login()
 
 # ── Carregar dados ────────────────────────────────────────────────────────────
 with st.spinner("Carregando dados..."):
