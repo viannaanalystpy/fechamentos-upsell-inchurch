@@ -4,6 +4,7 @@ Autenticação Google OAuth 2.0 — restringe acesso a emails @inchurch.com.br
 Sessão persistida em cookie (1 dia) para sobreviver a recarregamentos de página.
 """
 import secrets as _secrets
+import time
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 
@@ -147,6 +148,8 @@ def check_login():
         cm.set(_COOKIE_EMAIL, email, expires_at=expiry, key="set_ic_email")
         cm.set(_COOKIE_NAME,  name,  expires_at=expiry, key="set_ic_name")
         st.query_params.clear()
+        # Aguarda o JS gravar o cookie no browser antes de rerenderizar
+        time.sleep(1)
         st.rerun()
 
     # 4. Tela de login
