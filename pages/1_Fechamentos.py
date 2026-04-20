@@ -20,32 +20,51 @@ SEM_ATRIB = "Sem atribuição"
 df_raw = df_raw.copy()
 for col in ("sales_owner", "sdr_owner", "channel"):
     df_raw[col] = df_raw[col].fillna(SEM_ATRIB).replace("", SEM_ATRIB)
+df_raw["plan"] = df_raw["plan"].str.strip().str.title()
 
 # ── Sidebar — Filtros ─────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### Filtros")
 
+    _MESES_PT = {
+        "January": "Janeiro", "February": "Fevereiro", "March": "Março",
+        "April": "Abril", "May": "Maio", "June": "Junho",
+        "July": "Julho", "August": "Agosto", "September": "Setembro",
+        "October": "Outubro", "November": "Novembro", "December": "Dezembro",
+    }
     meses_opcoes = {"Todos": None}
     for m in sorted(df_raw["mes"].unique()):
-        label = pd.Timestamp(m).strftime("%B/%y").capitalize()
-        meses_opcoes[label] = pd.Timestamp(m)
+        ts = pd.Timestamp(m)
+        label = f"{_MESES_PT.get(ts.strftime('%B'), ts.strftime('%B'))}/{ts.strftime('%y')}"
+        meses_opcoes[label] = ts
     mes_sel_label = st.selectbox("Mês", options=list(meses_opcoes.keys()), index=0, key="mes_sel")
     mes_sel = meses_opcoes[mes_sel_label]
 
-    vendedores = ["Todos"] + sorted(df_raw["sales_owner"].dropna().unique().tolist())
-    vendedor_sel = st.selectbox("Vendedor", vendedores, key="vend_sel")
-
-    sdrs = ["Todos"] + sorted(df_raw["sdr_owner"].dropna().unique().tolist())
-    sdr_sel = st.selectbox("Pré-vendedor (SDR)", sdrs, key="sdr_sel")
-
-    produtos = ["Todos"] + sorted(df_raw["products"].dropna().unique().tolist())
-    produto_sel = st.selectbox("Produto", produtos, key="prod_sel")
-
-    canais = ["Todos"] + sorted(df_raw["channel"].dropna().unique().tolist())
-    canal_sel = st.selectbox("Canal", canais, key="canal_sel")
-
-    planos = ["Todos"] + sorted(df_raw["plan"].dropna().replace("", pd.NA).dropna().unique().tolist())
-    plano_sel = st.selectbox("Plano", planos, key="plano_sel")
+    vendedor_sel = st.multiselect(
+        "Vendedor",
+        options=sorted(df_raw["sales_owner"].dropna().unique().tolist()),
+        placeholder="Todos", key="vend_sel",
+    )
+    sdr_sel = st.multiselect(
+        "Pré-vendedor (SDR)",
+        options=sorted(df_raw["sdr_owner"].dropna().unique().tolist()),
+        placeholder="Todos", key="sdr_sel",
+    )
+    produto_sel = st.multiselect(
+        "Produto",
+        options=sorted(df_raw["products"].dropna().unique().tolist()),
+        placeholder="Todos", key="prod_sel",
+    )
+    canal_sel = st.multiselect(
+        "Canal",
+        options=sorted(df_raw["channel"].dropna().unique().tolist()),
+        placeholder="Todos", key="canal_sel",
+    )
+    plano_sel = st.multiselect(
+        "Plano",
+        options=sorted(df_raw["plan"].dropna().replace("", pd.NA).dropna().unique().tolist()),
+        placeholder="Todos", key="plano_sel",
+    )
 
     st.divider()
     if st.button("Atualizar dados", use_container_width=True, key="refresh_btn"):
@@ -61,16 +80,16 @@ def apply_filters(src, include_date_cutoff=False):
         d = d[d["mes"] == mes_sel]
     elif include_date_cutoff:
         d = d[d["mes"] >= cutoff_12m]
-    if vendedor_sel != "Todos":
-        d = d[d["sales_owner"] == vendedor_sel]
-    if sdr_sel != "Todos":
-        d = d[d["sdr_owner"] == sdr_sel]
-    if produto_sel != "Todos":
-        d = d[d["products"] == produto_sel]
-    if canal_sel != "Todos":
-        d = d[d["channel"] == canal_sel]
-    if plano_sel != "Todos":
-        d = d[d["plan"] == plano_sel]
+    if vendedor_sel:
+        d = d[d["sales_owner"].isin(vendedor_sel)]
+    if sdr_sel:
+        d = d[d["sdr_owner"].isin(sdr_sel)]
+    if produto_sel:
+        d = d[d["products"].isin(produto_sel)]
+    if canal_sel:
+        d = d[d["channel"].isin(canal_sel)]
+    if plano_sel:
+        d = d[d["plan"].isin(plano_sel)]
     return d
 
 # df = dados p/ gráficos (últimos 12 meses quando "Todos"); df_hist = histórico completo p/ tabela
