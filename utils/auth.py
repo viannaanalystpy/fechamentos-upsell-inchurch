@@ -15,7 +15,7 @@ import streamlit as st
 ALLOWED_DOMAIN = "inchurch.com.br"
 _COOKIE_EMAIL  = "ic_user_email"
 _COOKIE_NAME   = "ic_user_name"
-_COOKIE_DAYS   = 7
+_COOKIE_DAYS   = 365
 
 
 def _cm():
