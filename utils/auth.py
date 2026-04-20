@@ -27,17 +27,14 @@ def _read_cookies(cm):
     """
     Lê todos os cookies aguardando o CookieManager inicializar.
     Na primeira renderização o componente JS ainda não montou —
-    get_all() retorna None. Fazemos um rerun controlado (máx 1x)
-    para dar tempo ao browser de entregar os cookies.
+    get_all() retorna None. Usamos st.stop() para não mostrar a tela
+    de login enquanto aguardamos: o componente dispara o rerender
+    automaticamente quando termina de montar no browser.
     Retorna (email, name) ou (None, None).
     """
     all_cookies = cm.get_all()
     if all_cookies is None:
-        if not st.session_state.get("_cookie_init_done"):
-            st.session_state["_cookie_init_done"] = True
-            st.rerun()
-        return None, None
-    st.session_state.pop("_cookie_init_done", None)
+        st.stop()
     return all_cookies.get(_COOKIE_EMAIL), all_cookies.get(_COOKIE_NAME)
 
 
