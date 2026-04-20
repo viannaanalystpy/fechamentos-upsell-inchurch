@@ -96,6 +96,8 @@ def load_fechamentos() -> pd.DataFrame:
         problemas = []
         for _, row in df.iterrows():
             erros = []
+            if str(row.get("fonte", "")) == "Sem Assinatura Superlógica":
+                erros.append("Sem Assinatura Superlógica")
             if pd.isna(row["plan"]) or row["plan"] == "":
                 erros.append("Plano ausente")
             is_upsell_painel = "painel" in str(row.get("fonte", "")).lower()
