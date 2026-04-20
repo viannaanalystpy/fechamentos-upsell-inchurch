@@ -14,12 +14,30 @@ import streamlit as st
 ALLOWED_DOMAIN = "inchurch.com.br"
 _COOKIE_EMAIL  = "ic_user_email"
 _COOKIE_NAME   = "ic_user_name"
-_COOKIE_DAYS   = 1
+_COOKIE_DAYS   = 7
 
 
 def _cm():
     """CookieManager com chave fixa — uma instância por render cycle."""
     return stx.CookieManager(key="ic_cookie_mgr")
+
+
+def _read_cookies(cm):
+    """
+    Lê todos os cookies aguardando o CookieManager inicializar.
+    Na primeira renderização o componente JS ainda não montou —
+    get_all() retorna None. Fazemos um rerun controlado (máx 1x)
+    para dar tempo ao browser de entregar os cookies.
+    Retorna (email, name) ou (None, None).
+    """
+    all_cookies = cm.get_all()
+    if all_cookies is None:
+        if not st.session_state.get("_cookie_init_done"):
+            st.session_state["_cookie_init_done"] = True
+            st.rerun()
+        return None, None
+    st.session_state.pop("_cookie_init_done", None)
+    return all_cookies.get(_COOKIE_EMAIL), all_cookies.get(_COOKIE_NAME)
 
 
 def _secrets_google():
@@ -89,8 +107,7 @@ def check_login():
         return
 
     # 2. Cookie persistido de sessão anterior
-    email_cookie = cm.get(_COOKIE_EMAIL)
-    name_cookie  = cm.get(_COOKIE_NAME)
+    email_cookie, name_cookie = _read_cookies(cm)
     if email_cookie:
         st.session_state["user_email"] = email_cookie
         st.session_state["user_name"]  = name_cookie or email_cookie
