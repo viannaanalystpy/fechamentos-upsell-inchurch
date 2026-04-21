@@ -18,6 +18,9 @@ build/
 *.csv.bak
 *.xlsx
 
+# Claude Code (local only - tokens, memory, agents)
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
