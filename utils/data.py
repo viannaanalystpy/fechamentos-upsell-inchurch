@@ -17,6 +17,17 @@ MESES_PT = {
     'setembro': 9, 'outubro': 10, 'novembro': 11, 'dezembro': 12
 }
 
+MESES_ABREV_PT = {
+    1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun',
+    7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez',
+}
+
+
+def fmt_mes_abrev_pt(ts) -> str:
+    """Retorna mês abreviado em PT-BR no formato 'Abr/26'."""
+    ts = pd.Timestamp(ts)
+    return f"{MESES_ABREV_PT[ts.month]}/{ts.strftime('%y')}"
+
 
 @st.cache_resource
 def _bq_client() -> bigquery.Client:
@@ -210,7 +221,7 @@ def mes_fmt_ordered(df, date_col="mes"):
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
     df = df.sort_values(date_col)
-    df["mes_fmt"] = df[date_col].dt.strftime("%b/%y").str.capitalize()
+    df["mes_fmt"] = df[date_col].apply(fmt_mes_abrev_pt)
     ordered = df["mes_fmt"].drop_duplicates().tolist()
     return df, ordered
 

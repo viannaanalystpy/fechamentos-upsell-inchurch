@@ -4,7 +4,7 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 
 from utils.style import inject_css, chart_layout, PALETTE, FONTE_COLORS, PRODUTO_COLORS, PLAN_COLORS
-from utils.data import load_fechamentos, load_metas, load_ultima_atualizacao, fmt_brl, mes_fmt_ordered, last_val, prev_val, delta_str, no_data
+from utils.data import load_fechamentos, load_metas, load_ultima_atualizacao, fmt_brl, mes_fmt_ordered, last_val, prev_val, delta_str, no_data, fmt_mes_abrev_pt
 
 # ── Carregar dados ────────────────────────────────────────────────────────────
 with st.spinner("Carregando dados..."):
@@ -195,7 +195,7 @@ def _kpi_val(col, mes):
     row = _kpi_full[_kpi_full["mes"] == mes]
     return row[col].iloc[0] if not row.empty else None
 
-_mes_label = f" vs {_prev_mes.strftime('%b/%y').capitalize()}" if _prev_mes is not None else ""
+_mes_label = f" vs {fmt_mes_abrev_pt(_prev_mes)}" if _prev_mes is not None else ""
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
@@ -224,7 +224,7 @@ df_fyv_mes, x_order = mes_fmt_ordered(df_fyv_mes)
 
 # Mescla com metas
 df_meta_plot = df_meta.copy()
-df_meta_plot["mes_fmt"] = df_meta_plot["mes"].dt.strftime("%b/%y").str.capitalize()
+df_meta_plot["mes_fmt"] = df_meta_plot["mes"].apply(fmt_mes_abrev_pt)
 
 fig1 = go.Figure()
 fig1.add_bar(
