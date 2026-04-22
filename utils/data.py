@@ -1,3 +1,5 @@
+import unicodedata
+
 import pandas as pd
 import streamlit as st
 from google.cloud import bigquery
@@ -92,13 +94,17 @@ def load_fechamentos() -> pd.DataFrame:
             r'^[A-Z0-9\-]+//\s*', '', regex=True
         )
 
-        # Converte email para nome legível (ex: thalles.borges@inchurch.com.br → Thalles Borges)
+        # Normaliza email ou nome puro para forma única (ex: thalles.borges@inchurch.com.br
+        # e "Thálles Borges" → ambos viram "Thalles Borges"). Sem isso, filtros e
+        # agregações por vendedor duplicam o mesmo responsável.
         def email_to_name(val):
             if pd.isna(val) or val == "":
                 return val
-            if "@" in str(val):
-                return " ".join(p.capitalize() for p in str(val).split("@")[0].split("."))
-            return val
+            s = str(val)
+            if "@" in s:
+                s = s.split("@")[0].replace(".", " ")
+            s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+            return " ".join(p.capitalize() for p in s.split())
 
         df["sales_owner"] = df["sales_owner"].apply(email_to_name)
         df["sdr_owner"]   = df["sdr_owner"].apply(email_to_name)

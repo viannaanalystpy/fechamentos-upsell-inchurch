@@ -20,6 +20,7 @@ build/
 
 # Claude Code (local only - tokens, memory, agents)
 .claude/
+.agents/
 
 # OS
 .DS_Store
