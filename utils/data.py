@@ -46,7 +46,7 @@ def _bq_client() -> bigquery.Client:
         return bigquery.Client(project=PROJECT)
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def load_precos_tables() -> dict:
     """Carrega tabelas de referência de preço pra validações de conferência.
 
