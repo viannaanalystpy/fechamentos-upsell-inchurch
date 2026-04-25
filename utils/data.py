@@ -253,8 +253,13 @@ def load_fechamentos() -> pd.DataFrame:
                         if abs(row["value"] - mensalidade_esperada_total) > 0.01:
                             erros.append("Mensalidade fora de tabela")
 
+                # Setup só é conferido quando o deal contratou setup (setup > 0).
+                # Deal sem setup contratado não é "fora de tabela", é outra categoria.
+                setup_total = row.get("setup")
+                tem_setup = not pd.isna(setup_total) and setup_total > 0
+
                 # Setup fora de tabela — valor exato do first_setup_value
-                if plano in ("Lite", "Pro") and produto:
+                if tem_setup and plano in ("Lite", "Pro") and produto:
                     setup_exato = precos["produtos"].get((plano, produto, faixa, eh_filha, upsell_flag, True))
                     if setup_exato is not None:
                         fsv = row.get("first_setup_value")
@@ -262,13 +267,11 @@ def load_fechamentos() -> pd.DataFrame:
                             erros.append("Setup fora de tabela")
 
                 # Setup fora de range — setup total contratado
-                if plano in ("Lite", "Pro") and produto:
+                if tem_setup and plano in ("Lite", "Pro") and produto:
                     rng = precos["setup_range"].get((plano, produto, faixa))
                     if rng is not None:
-                        setup_total = row.get("setup")
                         minimo, maximo = rng
-                        if pd.isna(setup_total) or setup_total < minimo or setup_total > maximo:
-                            # Só adiciona se ainda não flagou "Setup fora de tabela" (evita duplicação)
+                        if setup_total < minimo or setup_total > maximo:
                             if "Setup fora de tabela" not in erros:
                                 erros.append("Setup fora de range")
 
