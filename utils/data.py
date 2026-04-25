@@ -265,9 +265,14 @@ def load_fechamentos() -> pd.DataFrame:
                         if setup_total < minimo or setup_total > maximo:
                             erros.append("Setup fora de range")
 
-            # Divergência HubSpot
+            # Divergência HubSpot — não aplica para Upsell Painel (não passa por HubSpot)
             tg = str(row.get("tertiarygroup_id", ""))
-            if tg and tg in precos["hubspot_divergencias"]:
+            fonte_str = str(row.get("fonte", "")).lower()
+            if (
+                tg
+                and tg in precos["hubspot_divergencias"]
+                and "upsell painel" not in fonte_str
+            ):
                 erros.append("Divergência HubSpot")
 
             problemas.append("; ".join(erros) if erros else "")
