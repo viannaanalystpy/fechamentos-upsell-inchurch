@@ -231,21 +231,25 @@ def load_fechamentos() -> pd.DataFrame:
                 erros.append("Setup < 10%")
 
             # --- Conferências de "Preço Fora de Tabela" ---
+            # Regra: precos_produtos.setup é booleano que distingue MRR-com-setup (TRUE)
+            # de MRR-sem-setup (FALSE). Cliente que paga setup ganha desconto na mensalidade.
+            # Same lookup do n8n [Pipeline] Precos Produtos.
             plano_info = _plano_lookup(row.get("plan"))
             faixa = row.get("member_range") if "member_range" in row else None
+            setup_total = row.get("setup")
+            tem_setup = not pd.isna(setup_total) and setup_total > 0
             if plano_info and faixa and not pd.isna(faixa):
                 plano, eh_filha = plano_info
                 produto = _derivar_produto_base(row.get("products"))
                 upsell_flag = bool(row.get("upsell")) if pd.notna(row.get("upsell")) else False
 
-                # Mensalidade fora de tabela (só Lite/Basic — Pro não tem mensalidade de referência)
+                # Mensalidade fora de tabela (só Lite/Basic — Pro tem mensalidade negociada)
                 if plano in ("Lite", "Basic"):
                     produto_key = produto if plano == "Lite" else None  # Basic usa produto NULL
                     mensalidade_esperada = (
-                        precos["produtos"].get((plano, produto_key, faixa, eh_filha, upsell_flag, False))
+                        precos["produtos"].get((plano, produto_key, faixa, eh_filha, upsell_flag, tem_setup))
                     )
                     if mensalidade_esperada is not None and not pd.isna(row["value"]):
-                        # Adiciona preço dos módulos (kids, journey, smart_store)
                         modulos_do_deal = _extrair_modulos(row.get("products"))
                         mensalidade_esperada_total = mensalidade_esperada + sum(
                             precos["modulos"].get((faixa, m), 0) for m in modulos_do_deal
@@ -253,27 +257,13 @@ def load_fechamentos() -> pd.DataFrame:
                         if abs(row["value"] - mensalidade_esperada_total) > 0.01:
                             erros.append("Mensalidade fora de tabela")
 
-                # Setup só é conferido quando o deal contratou setup (setup > 0).
-                # Deal sem setup contratado não é "fora de tabela", é outra categoria.
-                setup_total = row.get("setup")
-                tem_setup = not pd.isna(setup_total) and setup_total > 0
-
-                # Setup fora de tabela — valor exato do first_setup_value
-                if tem_setup and plano in ("Lite", "Pro") and produto:
-                    setup_exato = precos["produtos"].get((plano, produto, faixa, eh_filha, upsell_flag, True))
-                    if setup_exato is not None:
-                        fsv = row.get("first_setup_value")
-                        if pd.isna(fsv) or fsv == 0 or abs(fsv - setup_exato) > 0.01:
-                            erros.append("Setup fora de tabela")
-
-                # Setup fora de range — setup total contratado
+                # Setup fora de range — valida o setup TOTAL contra precos_setup (min-max)
                 if tem_setup and plano in ("Lite", "Pro") and produto:
                     rng = precos["setup_range"].get((plano, produto, faixa))
                     if rng is not None:
                         minimo, maximo = rng
                         if setup_total < minimo or setup_total > maximo:
-                            if "Setup fora de tabela" not in erros:
-                                erros.append("Setup fora de range")
+                            erros.append("Setup fora de range")
 
             # Divergência HubSpot
             tg = str(row.get("tertiarygroup_id", ""))
