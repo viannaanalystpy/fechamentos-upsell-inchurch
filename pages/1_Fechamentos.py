@@ -423,3 +423,22 @@ st.caption(
     "**Form de Upsell** = cliente existente que solicitou upgrade via formulário · "
     "**· Ajustado** = dados corrigidos ou inseridos manualmente na planilha de ajustes"
 )
+
+with st.expander("Legenda — Conferência Inválida", expanded=False):
+    st.markdown("""
+**Campos obrigatórios ausentes:**
+- **Plano ausente** — o campo `plan` não foi preenchido. Sem plano não é possível calcular preço esperado nem classificar o deal.
+- **Vendedor ausente** — o campo `sales_owner` não foi preenchido (exceto para upsells vindos do painel, que não têm vendedor atribuído). Sem vendedor não é possível computar comissão.
+- **Sem Assinatura Superlógica** — o deal não está registrado como assinatura ativa no Superlógica. Normalmente indica que o vendedor não cadastrou os produtos após o fechamento.
+
+**Preço fora de tabela (afeta comissão):**
+- **Mensalidade fora de tabela** — o `value` (MRR) não bate com a soma do plano-base + módulos esperados pela tabela de preços. Só aplica para planos **LITE** e **BASIC** (PRO tem mensalidade negociada).
+- **Setup fora de tabela** — o `first_setup_value` (entrada de setup) não bate com o valor exato esperado pela tabela, considerando se é new deal, upsell ou filha. Aplica para **LITE** e **PRO**.
+- **Setup fora de range** — o `setup` (total contratado) está fora do intervalo mínimo–máximo aceitável para a faixa de membros + plano + produto. Aplica para **LITE** e **PRO**. Só aparece quando não há flag de "Setup fora de tabela" junto.
+- **Setup < 10%** — o `first_setup_value` é menor que 10% do `setup` total. Cliente pagou entrada abaixo do mínimo aceito.
+
+**Divergência entre sistemas:**
+- **Divergência HubSpot** — o deal consta na tabela `hubspot_validacao` como divergente entre o que foi preenchido no HubSpot pelo vendedor e o que foi capturado pelo backend.
+
+_Uma linha pode ter múltiplas flags separadas por `;`._
+""")
