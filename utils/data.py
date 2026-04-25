@@ -91,7 +91,7 @@ def load_precos_tables() -> dict:
     df_hub = client.query(f"""
         SELECT DISTINCT CAST(tertiarygroup_id AS STRING) AS tg
         FROM `{PROJECT}.{DATASET}.hubspot_validacao`
-        WHERE hubspot_status IS NOT NULL AND TRIM(hubspot_status) != ''
+        WHERE hubspot_status IN ('divergente', 'não está na hubspot')
     """).to_dataframe()
     hubspot_divergencias = set(df_hub["tg"].tolist()) if not df_hub.empty else set()
 
