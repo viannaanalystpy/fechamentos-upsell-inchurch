@@ -157,7 +157,7 @@ df_hist = df_hist.drop(columns="_rank")
 
 # ── Header ───────────────────────────────────────────────────────────────────
 ultima_atualizacao = load_ultima_atualizacao()
-st.caption(f"Última atualização dos dados: {ultima_atualizacao} · build v2")
+st.caption(f"Última atualização dos dados: {ultima_atualizacao}")
 st.markdown("<h1>Fechamento <span>de Vendas</span></h1>", unsafe_allow_html=True)
 
 # ── KPIs ─────────────────────────────────────────────────────────────────────
