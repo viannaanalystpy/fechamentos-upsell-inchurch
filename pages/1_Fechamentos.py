@@ -416,13 +416,13 @@ invalidos = df_tabela[df_tabela["Conferência Inválida"] != ""]
 if not invalidos.empty:
     st.warning(f"{len(invalidos)} registro(s) com conferência inválida.")
 
-st.caption(
-    "**Legenda — Origem:** "
-    "**Form de Fechamentos** = cliente novo captado pelo processo comercial · "
-    "**Upsell Painel** = cliente existente que fez upgrade pelo painel InChurch · "
-    "**Form de Upsell** = cliente existente que solicitou upgrade via formulário · "
-    "**· Ajustado** = dados corrigidos ou inseridos manualmente na planilha de ajustes"
-)
+with st.expander("Legenda — Origem", expanded=False):
+    st.markdown("""
+- **Form de Fechamentos** — cliente novo captado pelo processo comercial.
+- **Upsell Painel** — cliente existente que fez upgrade pelo painel InChurch.
+- **Form de Upsell** — cliente existente que solicitou upgrade via formulário.
+- **· Ajustado** — dados corrigidos ou inseridos manualmente na planilha de ajustes.
+""")
 
 with st.expander("Legenda — Conferência Inválida", expanded=False):
     st.markdown("""
