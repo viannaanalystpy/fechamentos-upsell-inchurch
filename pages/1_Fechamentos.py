@@ -410,6 +410,19 @@ st.dataframe(
     use_container_width=True,
     hide_index=True,
     height=500,
+    column_config={
+        "Data 1º Pgto":         st.column_config.TextColumn(width=100),
+        "Igreja":               st.column_config.TextColumn(width=260),
+        "Cód. Local":           st.column_config.TextColumn(width=90),
+        "MRR":                  st.column_config.TextColumn(width=110),
+        "Setup":                st.column_config.TextColumn(width=110),
+        "FYV":                  st.column_config.TextColumn(width=120),
+        "Vendedor":             st.column_config.TextColumn(width=150),
+        "SDR":                  st.column_config.TextColumn(width=150),
+        "Produto":              st.column_config.TextColumn(width=200),
+        "Origem":               st.column_config.TextColumn(width=200),
+        "Conferência Inválida": st.column_config.TextColumn(width=320),
+    },
 )
 
 invalidos = df_tabela[df_tabela["Conferência Inválida"] != ""]
