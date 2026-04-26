@@ -211,8 +211,25 @@ def load_fechamentos() -> pd.DataFrame:
             st.warning(f"Não foi possível carregar tabelas de preço — flags de 'Preço Fora de Tabela' desativadas. Erro: {e}")
             precos = {"produtos": {}, "modulos": {}, "setup_range": {}, "hubspot_divergencias": set()}
 
-        # DEBUG TEMPORÁRIO — remover após confirmar formato de precos_modulos
-        st.info(f"DEBUG precos_modulos keys (primeiras 10): {list(precos['modulos'].keys())[:10]}")
+        # DEBUG TEMPORÁRIO — remover após confirmar problema de mensalidade
+        _debug_tg = "35537"
+        _debug_rows = df[df["tertiarygroup_id"].astype(str) == _debug_tg]
+        if not _debug_rows.empty:
+            r = _debug_rows.iloc[0]
+            _pi = _plano_lookup(r.get("plan"))
+            _faixa = r.get("member_range")
+            _upsell = bool(r.get("upsell")) if pd.notna(r.get("upsell")) else False
+            _prod = _derivar_produto_base(r.get("products"))
+            _mods = _extrair_modulos(r.get("products"))
+            _key = (_pi[0], _prod, _faixa, _pi[1], _upsell, False) if _pi else None
+            _mens = precos["produtos"].get(_key) if _key else None
+            _mod_vals = {m: (precos["modulos"].get((_faixa, m)), precos["modulos"].get((None, m))) for m in _mods}
+            st.warning(
+                f"DEBUG TG {_debug_tg}: plan={r.get('plan')} | faixa={repr(_faixa)} | "
+                f"upsell={_upsell} | produto={_prod} | produtos_key={_key} | "
+                f"mensalidade_base={_mens} | value={r.get('value')} | "
+                f"modulos={_mods} | mod_lookups={_mod_vals}"
+            )
 
         # Conferência inválida: campos obrigatórios ausentes + preço fora de tabela
         problemas = []
