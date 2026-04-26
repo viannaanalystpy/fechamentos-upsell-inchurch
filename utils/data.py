@@ -75,7 +75,7 @@ def load_precos_tables() -> dict:
         FROM `{PROJECT}.{DATASET}.precos_modulos`
     """).to_dataframe()
     modulos = {
-        (r.faixa_membros, r.modulo): float(r.valor)
+        (r.faixa_membros if pd.notna(r.faixa_membros) else None, r.modulo): float(r.valor)
         for r in df_mod.itertuples(index=False) if pd.notna(r.valor)
     }
 
@@ -250,8 +250,11 @@ def load_fechamentos() -> pd.DataFrame:
                     )
                     if mensalidade_esperada is not None and not pd.isna(row["value"]):
                         modulos_do_deal = _extrair_modulos(row.get("products"))
+                        def _preco_modulo(mod):
+                            v = precos["modulos"].get((faixa, mod))
+                            return v if v is not None else precos["modulos"].get((None, mod), 0.0)
                         mensalidade_esperada_total = mensalidade_esperada + sum(
-                            precos["modulos"].get((faixa, m), 0) for m in modulos_do_deal
+                            _preco_modulo(m) for m in modulos_do_deal
                         )
                         if abs(row["value"] - mensalidade_esperada_total) > 0.01:
                             erros.append("Mensalidade fora de tabela")
