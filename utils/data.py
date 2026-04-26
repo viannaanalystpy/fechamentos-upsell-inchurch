@@ -211,15 +211,6 @@ def load_fechamentos() -> pd.DataFrame:
             st.warning(f"Não foi possível carregar tabelas de preço — flags de 'Preço Fora de Tabela' desativadas. Erro: {e}")
             precos = {"produtos": {}, "modulos": {}, "setup_range": {}, "hubspot_divergencias": set()}
 
-        # DEBUG TEMPORÁRIO — ver todos os valores Lite app+site no BQ
-        _client_dbg = _bq_client()
-        _df_dbg = _client_dbg.query("""
-            SELECT plano, produto, faixa_membros, filha, upsell, setup, valor
-            FROM `business-intelligence-467516.Fechamento_vendas.precos_produtos`
-            WHERE plano = 'Lite' AND produto = 'app + site'
-            ORDER BY setup, upsell, faixa_membros
-        """).to_dataframe()
-        st.info(f"DEBUG Lite app+site (todas faixas):\n{_df_dbg.to_string(index=False)}")
 
 
         # Conferência inválida: campos obrigatórios ausentes + preço fora de tabela
