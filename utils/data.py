@@ -234,11 +234,8 @@ def load_fechamentos() -> pd.DataFrame:
 
             # --- Conferências de "Preço Fora de Tabela" ---
             # Só aplica a partir de abril/2026 — jan-mar validados manualmente pelo gestor.
-            primeiro_pagamento = row.get("first_payment")
-            validar_preco = (
-                pd.notna(primeiro_pagamento)
-                and pd.Timestamp(primeiro_pagamento) >= pd.Timestamp("2026-04-01")
-            )
+            mes_row = row.get("mes")
+            validar_preco = pd.notna(mes_row) and mes_row >= pd.Timestamp("2026-04-01")
 
             plano_info = _plano_lookup(row.get("plan"))
             faixa = row.get("member_range") if "member_range" in row else None
