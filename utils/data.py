@@ -211,6 +211,9 @@ def load_fechamentos() -> pd.DataFrame:
             st.warning(f"Não foi possível carregar tabelas de preço — flags de 'Preço Fora de Tabela' desativadas. Erro: {e}")
             precos = {"produtos": {}, "modulos": {}, "setup_range": {}, "hubspot_divergencias": set()}
 
+        # DEBUG TEMPORÁRIO — remover após confirmar formato de precos_modulos
+        st.info(f"DEBUG precos_modulos keys (primeiras 10): {list(precos['modulos'].keys())[:10]}")
+
         # Conferência inválida: campos obrigatórios ausentes + preço fora de tabela
         problemas = []
         for _, row in df.iterrows():
