@@ -278,7 +278,8 @@ def load_fechamentos() -> pd.DataFrame:
             tg = str(row.get("tertiarygroup_id", ""))
             fonte_str = str(row.get("fonte", "")).lower()
             if (
-                tg
+                validar_preco
+                and tg
                 and tg in precos["hubspot_divergencias"]
                 and "upsell painel" not in fonte_str
             ):
