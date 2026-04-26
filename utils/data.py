@@ -237,7 +237,6 @@ def load_fechamentos() -> pd.DataFrame:
             plano_info = _plano_lookup(row.get("plan"))
             faixa = row.get("member_range") if "member_range" in row else None
             setup_total = row.get("setup")
-            tem_setup = not pd.isna(setup_total) and setup_total > 0
             if plano_info and faixa and not pd.isna(faixa):
                 plano, eh_filha = plano_info
                 produto = _derivar_produto_base(row.get("products"))
@@ -247,7 +246,7 @@ def load_fechamentos() -> pd.DataFrame:
                 if plano in ("Lite", "Basic"):
                     produto_key = produto if plano == "Lite" else None  # Basic usa produto NULL
                     mensalidade_esperada = (
-                        precos["produtos"].get((plano, produto_key, faixa, eh_filha, upsell_flag, tem_setup))
+                        precos["produtos"].get((plano, produto_key, faixa, eh_filha, upsell_flag, False))
                     )
                     if mensalidade_esperada is not None and not pd.isna(row["value"]):
                         modulos_do_deal = _extrair_modulos(row.get("products"))
@@ -257,12 +256,15 @@ def load_fechamentos() -> pd.DataFrame:
                         if abs(row["value"] - mensalidade_esperada_total) > 0.01:
                             erros.append("Mensalidade fora de tabela")
 
-                # Setup fora de range — valida o setup TOTAL contra precos_setup (min-max)
-                if tem_setup and plano in ("Lite", "Pro") and produto:
+                # Setup fora de range — valida o setup TOTAL contra precos_setup (min-max).
+                # Inclui setup=null/0: ausência de setup em deal Pro/Lite é inválida quando
+                # a tabela define um mínimo > 0 para aquela combinação plano+produto+faixa.
+                if plano in ("Lite", "Pro") and produto:
                     rng = precos["setup_range"].get((plano, produto, faixa))
                     if rng is not None:
                         minimo, maximo = rng
-                        if setup_total < minimo or setup_total > maximo:
+                        setup_val = float(setup_total) if not pd.isna(setup_total) else 0.0
+                        if setup_val < minimo or setup_val > maximo:
                             erros.append("Setup fora de range")
 
             # Divergência HubSpot — não aplica para Upsell Painel (não passa por HubSpot)
