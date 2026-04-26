@@ -257,15 +257,16 @@ def load_fechamentos() -> pd.DataFrame:
                             erros.append("Mensalidade fora de tabela")
 
                 # Setup fora de range — valida o setup TOTAL contra precos_setup (min-max).
-                # Inclui setup=null/0: ausência de setup em deal Pro/Lite é inválida quando
-                # a tabela define um mínimo > 0 para aquela combinação plano+produto+faixa.
+                # Pro: setup é obrigatório → valida mesmo quando ausente (0/null fora do range).
+                # Lite: setup é opcional → só valida quando efetivamente contratado (> 0).
                 if plano in ("Lite", "Pro") and produto:
                     rng = precos["setup_range"].get((plano, produto, faixa))
                     if rng is not None:
                         minimo, maximo = rng
                         setup_val = float(setup_total) if not pd.isna(setup_total) else 0.0
-                        if setup_val < minimo or setup_val > maximo:
-                            erros.append("Setup fora de range")
+                        if plano == "Pro" or setup_val > 0:
+                            if setup_val < minimo or setup_val > maximo:
+                                erros.append("Setup fora de range")
 
             # Divergência HubSpot — não aplica para Upsell Painel (não passa por HubSpot)
             tg = str(row.get("tertiarygroup_id", ""))
