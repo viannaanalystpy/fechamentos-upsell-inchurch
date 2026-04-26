@@ -233,13 +233,17 @@ def load_fechamentos() -> pd.DataFrame:
                 erros.append("Setup < 10%")
 
             # --- Conferências de "Preço Fora de Tabela" ---
-            # Regra: precos_produtos.setup é booleano que distingue MRR-com-setup (TRUE)
-            # de MRR-sem-setup (FALSE). Cliente que paga setup ganha desconto na mensalidade.
-            # Same lookup do n8n [Pipeline] Precos Produtos.
+            # Só aplica a partir de abril/2026 — jan-mar validados manualmente pelo gestor.
+            primeiro_pagamento = row.get("first_payment")
+            validar_preco = (
+                pd.notna(primeiro_pagamento)
+                and pd.Timestamp(primeiro_pagamento) >= pd.Timestamp("2026-04-01")
+            )
+
             plano_info = _plano_lookup(row.get("plan"))
             faixa = row.get("member_range") if "member_range" in row else None
             setup_total = row.get("setup")
-            if plano_info and faixa and not pd.isna(faixa):
+            if validar_preco and plano_info and faixa and not pd.isna(faixa):
                 plano, eh_filha = plano_info
                 produto = _derivar_produto_base(row.get("products"))
                 upsell_flag = bool(row.get("upsell")) if pd.notna(row.get("upsell")) else False
