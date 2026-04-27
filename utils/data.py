@@ -246,10 +246,14 @@ def load_fechamentos() -> pd.DataFrame:
                 upsell_flag = bool(row.get("upsell")) if pd.notna(row.get("upsell")) else False
 
                 # Mensalidade fora de tabela (só Lite/Basic — Pro tem mensalidade negociada)
+                # Se o deal tem setup contratado, o preço da mensalidade é menor (setup=TRUE na tabela).
+                # Se não tem setup, usa o preço cheio (setup=FALSE na tabela).
                 if plano in ("Lite", "Basic"):
                     produto_key = produto if plano == "Lite" else None  # Basic usa produto NULL
+                    tem_setup = not pd.isna(setup_total) and float(setup_total) > 0
+                    setup_key = True if tem_setup else False
                     mensalidade_esperada = (
-                        precos["produtos"].get((plano, produto_key, faixa, eh_filha, upsell_flag, False))
+                        precos["produtos"].get((plano, produto_key, faixa, eh_filha, upsell_flag, setup_key))
                     )
                     if mensalidade_esperada is not None and not pd.isna(row["value"]):
                         modulos_do_deal = _extrair_modulos(row.get("products"))
