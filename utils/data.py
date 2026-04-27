@@ -269,7 +269,7 @@ def load_fechamentos() -> pd.DataFrame:
                 # Setup fora de range — valida o setup TOTAL contra precos_setup (min-max).
                 # Pro: setup é obrigatório → valida mesmo quando ausente (0/null fora do range).
                 # Lite: setup é opcional → só valida quando efetivamente contratado (> 0).
-                if plano in ("Lite", "Pro") and produto:
+                if plano in ("Lite", "Pro") and produto and not eh_filha:
                     rng = precos["setup_range"].get((plano, produto, faixa))
                     if rng is not None:
                         minimo, maximo = rng
