@@ -405,14 +405,11 @@ def highlight_invalido(row):
         return ["background-color: rgba(255,80,80,0.12)"] * len(row)
     return [""] * len(row)
 
-_row_height = 35
-_table_height = len(df_tabela) * _row_height + 38
-
 st.dataframe(
     df_tabela.style.apply(highlight_invalido, axis=1),
     use_container_width=True,
     hide_index=True,
-    height=_table_height,
+    height=600,
     column_config={
         "Data 1º Pgto":         st.column_config.TextColumn(width="small"),
         "Igreja":               st.column_config.TextColumn(width="large"),
