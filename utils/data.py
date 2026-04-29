@@ -89,17 +89,19 @@ def load_precos_tables() -> dict:
     }
 
     df_hub = client.query(f"""
-        SELECT DISTINCT CAST(tertiarygroup_id AS STRING) AS tg
+        SELECT DISTINCT CAST(tertiarygroup_id AS STRING) AS tg, hubspot_status
         FROM `{PROJECT}.{DATASET}.hubspot_validacao`
-        WHERE hubspot_status IN ('divergente', 'não está na hubspot')
+        WHERE hubspot_status IN ('divergente', 'não está na hubspot', 'cadastro incompleto')
     """).to_dataframe()
-    hubspot_divergencias = set(df_hub["tg"].tolist()) if not df_hub.empty else set()
+    hubspot_divergencias = set(df_hub.loc[df_hub["hubspot_status"].isin(["divergente", "não está na hubspot"]), "tg"].tolist()) if not df_hub.empty else set()
+    hubspot_incompletos  = set(df_hub.loc[df_hub["hubspot_status"] == "cadastro incompleto", "tg"].tolist()) if not df_hub.empty else set()
 
     return {
         "produtos": produtos,
         "modulos": modulos,
         "setup_range": setup_range,
         "hubspot_divergencias": hubspot_divergencias,
+        "hubspot_incompletos": hubspot_incompletos,
     }
 
 
@@ -209,7 +211,7 @@ def load_fechamentos() -> pd.DataFrame:
             precos = load_precos_tables()
         except Exception as e:
             st.warning(f"Não foi possível carregar tabelas de preço — flags de 'Preço Fora de Tabela' desativadas. Erro: {e}")
-            precos = {"produtos": {}, "modulos": {}, "setup_range": {}, "hubspot_divergencias": set()}
+            precos = {"produtos": {}, "modulos": {}, "setup_range": {}, "hubspot_divergencias": set(), "hubspot_incompletos": set()}
 
 
 
@@ -284,7 +286,7 @@ def load_fechamentos() -> pd.DataFrame:
                             if setup_val < minimo or setup_val > maximo:
                                 erros.append("Setup fora de range")
 
-            # Divergência HubSpot — não aplica para Upsell Painel (não passa por HubSpot)
+            # Divergência HubSpot / Cadastro incompleto — não aplica para Upsell Painel
             tg = str(row.get("tertiarygroup_id", ""))
             fonte_str = str(row.get("fonte", "")).lower()
             if (
@@ -294,6 +296,14 @@ def load_fechamentos() -> pd.DataFrame:
                 and "upsell painel" not in fonte_str
             ):
                 erros.append("Divergência HubSpot")
+
+            if (
+                validar_preco
+                and tg
+                and tg in precos["hubspot_incompletos"]
+                and "upsell painel" not in fonte_str
+            ):
+                erros.append("Cadastro incompleto no HubSpot")
 
             problemas.append("; ".join(erros) if erros else "")
         df["conferencia_invalida"] = problemas
