@@ -47,101 +47,6 @@ def _bq_client() -> bigquery.Client:
 
 
 @st.cache_data(ttl=300)
-def load_precos_tables() -> dict:
-    """Carrega tabelas de referência de preço pra validações de conferência.
-
-    Retorna dict com:
-      - 'produtos': {(plano, produto, faixa, filha, upsell, setup): valor}
-         - Em caso de duplicata (Lite 1-100 new tem 2 valores), pega MIN (bate com doc oficial)
-      - 'modulos': {(faixa, modulo): valor}
-      - 'setup_range': {(plano, produto, faixa): (minimo, maximo)}
-      - 'hubspot_divergencias': set de tertiarygroup_id (STRING)
-    """
-    client = _bq_client()
-
-    # precos_produtos — dedup via MIN pra contornar duplicatas na planilha origem
-    df_prod = client.query(f"""
-        SELECT plano, produto, faixa_membros, filha, upsell, setup, MIN(valor) AS valor
-        FROM `{PROJECT}.{DATASET}.precos_produtos`
-        GROUP BY plano, produto, faixa_membros, filha, upsell, setup
-    """).to_dataframe()
-    produtos = {
-        (r.plano, r.produto, r.faixa_membros, bool(r.filha), bool(r.upsell), bool(r.setup)): float(r.valor)
-        for r in df_prod.itertuples(index=False) if pd.notna(r.valor)
-    }
-
-    df_mod = client.query(f"""
-        SELECT DISTINCT faixa_membros, modulo, valor
-        FROM `{PROJECT}.{DATASET}.precos_modulos`
-    """).to_dataframe()
-    modulos = {
-        (r.faixa_membros if pd.notna(r.faixa_membros) else None, r.modulo): float(r.valor)
-        for r in df_mod.itertuples(index=False) if pd.notna(r.valor)
-    }
-
-    df_setup = client.query(f"""
-        SELECT plano, produto, faixa_membros, minimo, maximo
-        FROM `{PROJECT}.{DATASET}.precos_setup`
-    """).to_dataframe()
-    setup_range = {
-        (r.plano, r.produto, r.faixa_membros): (float(r.minimo), float(r.maximo))
-        for r in df_setup.itertuples(index=False) if pd.notna(r.minimo) and pd.notna(r.maximo)
-    }
-
-    df_hub = client.query(f"""
-        SELECT DISTINCT CAST(tertiarygroup_id AS STRING) AS tg, hubspot_status
-        FROM `{PROJECT}.{DATASET}.hubspot_validacao`
-        WHERE hubspot_status IN ('divergente', 'não está na hubspot', 'cadastro incompleto')
-    """).to_dataframe()
-    hubspot_divergencias = set(df_hub.loc[df_hub["hubspot_status"].isin(["divergente", "não está na hubspot"]), "tg"].tolist()) if not df_hub.empty else set()
-    hubspot_incompletos  = set(df_hub.loc[df_hub["hubspot_status"] == "cadastro incompleto", "tg"].tolist()) if not df_hub.empty else set()
-
-    return {
-        "produtos": produtos,
-        "modulos": modulos,
-        "setup_range": setup_range,
-        "hubspot_divergencias": hubspot_divergencias,
-        "hubspot_incompletos": hubspot_incompletos,
-    }
-
-
-def _derivar_produto_base(products_str) -> str | None:
-    """Mapeia a coluna `products` do deal para o produto-base da tabela de preços.
-    Retorna 'app + site' se tem ambos, 'app ou site' se tem só um, senão None.
-    """
-    if pd.isna(products_str) or not products_str:
-        return None
-    tokens = [t.strip().lower() for t in str(products_str).split(",")]
-    tem_app = "app" in tokens
-    tem_site = "site" in tokens
-    if tem_app and tem_site:
-        return "app + site"
-    if tem_app or tem_site:
-        return "app ou site"
-    return None
-
-
-def _extrair_modulos(products_str) -> list[str]:
-    """Extrai tokens de módulo (kids, journey, smart_store) da coluna `products`."""
-    if pd.isna(products_str) or not products_str:
-        return []
-    tokens = [t.strip().lower() for t in str(products_str).split(",")]
-    return [t for t in tokens if t in ("kids", "journey", "smart_store")]
-
-
-def _plano_lookup(plan: str) -> tuple[str, bool] | None:
-    """Mapeia o plan do deal para (plano_na_tabela, flag_filha). None se não aplicável."""
-    if pd.isna(plan) or not plan:
-        return None
-    p = str(plan).strip()
-    if p == "Igreja Filha":
-        return ("Pro", True)
-    if p in ("Pro", "Lite", "Basic"):
-        return (p, False)
-    return None  # STARTER ou desconhecidos: sem validação
-
-
-@st.cache_data(ttl=300)
 def load_fechamentos() -> pd.DataFrame:
     client = _bq_client()
     query = f"""
@@ -205,27 +110,36 @@ def load_fechamentos() -> pd.DataFrame:
         df["sales_owner"] = df["sales_owner"].apply(email_to_name)
         df["sdr_owner"]   = df["sdr_owner"].apply(email_to_name)
 
-        # Carrega tabelas de referência de preço 1x antes do loop.
-        # Fallback seguro: se falhar (tabela inacessível, schema mudou, etc), segue só com flags antigas.
+        # Flags vêm da tabela conferencias_invalidas (populada pelo pipeline n8n).
+        # Setup < 10% segue calculado em Python — regra simples não migrada pro pipeline.
         try:
-            precos = load_precos_tables()
+            df_conf = client.query(f"""
+                SELECT
+                  CAST(tertiarygroup_id AS STRING) AS tg,
+                  DATE(mes) AS mes,
+                  STRING_AGG(DISTINCT flag, '; ' ORDER BY flag) AS flags
+                FROM `{PROJECT}.{DATASET}.conferencias_invalidas`
+                GROUP BY tg, mes
+            """).to_dataframe()
+            if not df_conf.empty:
+                df_conf["mes"] = pd.to_datetime(df_conf["mes"])
+            flags_map = {
+                (r.tg, r.mes): r.flags
+                for r in df_conf.itertuples(index=False)
+            } if not df_conf.empty else {}
         except Exception as e:
-            st.warning(f"Não foi possível carregar tabelas de preço — flags de 'Preço Fora de Tabela' desativadas. Erro: {e}")
-            precos = {"produtos": {}, "modulos": {}, "setup_range": {}, "hubspot_divergencias": set(), "hubspot_incompletos": set()}
+            st.warning(f"Não foi possível carregar flags de conferência: {e}")
+            flags_map = {}
 
-
-
-        # Conferência inválida: campos obrigatórios ausentes + preço fora de tabela
         problemas = []
         for _, row in df.iterrows():
             erros = []
-            if str(row.get("fonte", "")) == "Sem Assinatura Superlógica":
-                erros.append("Sem Assinatura Superlógica")
-            if pd.isna(row["plan"]) or row["plan"] == "":
-                erros.append("Plano ausente")
-            is_upsell_painel = "painel" in str(row.get("fonte", "")).lower()
-            if not is_upsell_painel and (pd.isna(row["sales_owner"]) or row["sales_owner"] == ""):
-                erros.append("Vendedor ausente")
+            tg = str(row.get("tertiarygroup_id", ""))
+            mes_row = row.get("mes")
+            flags_bq = flags_map.get((tg, mes_row), "")
+            if flags_bq:
+                erros.extend(e.strip() for e in flags_bq.split(";") if e.strip())
+
             if (
                 not pd.isna(row["setup"]) and row["setup"] > 0
                 and not pd.isna(row["first_setup_value"])
@@ -233,77 +147,6 @@ def load_fechamentos() -> pd.DataFrame:
                 and row["first_setup_value"] < row["setup"] * 0.10
             ):
                 erros.append("Setup < 10%")
-
-            # --- Conferências de "Preço Fora de Tabela" ---
-            # Só aplica a partir de abril/2026 — jan-mar validados manualmente pelo gestor.
-            mes_row = row.get("mes")
-            validar_preco = pd.notna(mes_row) and mes_row >= pd.Timestamp("2026-04-01")
-
-            plano_info = _plano_lookup(row.get("plan"))
-            faixa = row.get("member_range") if "member_range" in row else None
-            setup_total = row.get("setup")
-            if validar_preco and plano_info and faixa and not pd.isna(faixa):
-                plano, eh_filha = plano_info
-                produto = _derivar_produto_base(row.get("products"))
-                upsell_flag = bool(row.get("upsell")) if pd.notna(row.get("upsell")) else False
-
-                # Mensalidade fora de tabela (Lite, Basic e Pro).
-                # Lite/Basic: setup=TRUE se o deal contratou setup (mensalidade menor), FALSE caso contrário.
-                # Pro: tabela só tem setup=TRUE (setup é obrigatório no Pro) — lookup sempre usa True.
-                if plano in ("Lite", "Basic", "Pro"):
-                    if plano == "Basic":
-                        produto_key = None
-                    else:
-                        produto_key = produto
-                    if plano == "Pro":
-                        setup_key = True
-                    else:
-                        tem_setup = not pd.isna(setup_total) and float(setup_total) > 0
-                        setup_key = True if tem_setup else False
-                    mensalidade_esperada = (
-                        precos["produtos"].get((plano, produto_key, faixa, eh_filha, upsell_flag, setup_key))
-                    )
-                    if mensalidade_esperada is not None and not pd.isna(row["value"]):
-                        modulos_do_deal = _extrair_modulos(row.get("products"))
-                        def _preco_modulo(mod):
-                            v = precos["modulos"].get((faixa, mod))
-                            return v if v is not None else precos["modulos"].get((None, mod), 0.0)
-                        mensalidade_esperada_total = mensalidade_esperada + sum(
-                            _preco_modulo(m) for m in modulos_do_deal
-                        )
-                        if abs(row["value"] - mensalidade_esperada_total) > 0.01:
-                            erros.append("Mensalidade fora de tabela")
-
-                # Setup fora de range — valida o setup TOTAL contra precos_setup (min-max).
-                # Pro: setup é obrigatório → valida mesmo quando ausente (0/null fora do range).
-                # Lite: setup é opcional → só valida quando efetivamente contratado (> 0).
-                if plano in ("Lite", "Pro") and produto and not eh_filha:
-                    rng = precos["setup_range"].get((plano, produto, faixa))
-                    if rng is not None:
-                        minimo, maximo = rng
-                        setup_val = float(setup_total) if not pd.isna(setup_total) else 0.0
-                        if plano == "Pro" or setup_val > 0:
-                            if setup_val < minimo or setup_val > maximo:
-                                erros.append("Setup fora de range")
-
-            # Divergência HubSpot / Cadastro incompleto — não aplica para Upsell Painel
-            tg = str(row.get("tertiarygroup_id", ""))
-            fonte_str = str(row.get("fonte", "")).lower()
-            if (
-                validar_preco
-                and tg
-                and tg in precos["hubspot_divergencias"]
-                and "upsell painel" not in fonte_str
-            ):
-                erros.append("Divergência HubSpot")
-
-            if (
-                validar_preco
-                and tg
-                and tg in precos["hubspot_incompletos"]
-                and "upsell painel" not in fonte_str
-            ):
-                erros.append("Cadastro incompleto no HubSpot")
 
             problemas.append("; ".join(erros) if erros else "")
         df["conferencia_invalida"] = problemas
