@@ -70,7 +70,8 @@ def load_fechamentos() -> pd.DataFrame:
             f.upsell,
             f.new_deal,
             DATE_TRUNC(DATE(f.first_payment), MONTH) AS mes,
-            (aj.id IS NOT NULL) AS from_ajuste
+            (aj.id IS NOT NULL) AS from_ajuste,
+            f.conferencia
         FROM `{PROJECT}.{DATASET}.{TABELA}` f
         LEFT JOIN `{PROJECT}.Splgc.splgc-clientes-inchurch` c
           ON CAST(f.superlogica_id AS STRING) = CAST(c.id_sacado_sac AS STRING)
@@ -112,13 +113,22 @@ def load_fechamentos() -> pd.DataFrame:
 
         # Flags vêm da tabela conferencias_invalidas (populada pelo pipeline n8n).
         # Setup < 10% segue calculado em Python — regra simples não migrada pro pipeline.
+        # Deals com conferencia = '-' em ajustes_fechamentos são marcados como conferidos
+        # pelo chefe e não devem ter flags exibidas.
         try:
             df_conf = client.query(f"""
                 SELECT
-                  CAST(tertiarygroup_id AS STRING) AS tg,
-                  DATE(mes) AS mes,
-                  STRING_AGG(DISTINCT flag, '; ' ORDER BY flag) AS flags
-                FROM `{PROJECT}.{DATASET}.conferencias_invalidas`
+                  CAST(ci.tertiarygroup_id AS STRING) AS tg,
+                  DATE(ci.mes) AS mes,
+                  STRING_AGG(DISTINCT ci.flag, '; ' ORDER BY ci.flag) AS flags
+                FROM `{PROJECT}.{DATASET}.conferencias_invalidas` ci
+                WHERE NOT EXISTS (
+                  SELECT 1
+                  FROM `{PROJECT}.{DATASET}.ajustes_fechamentos` aj
+                  WHERE CAST(aj.tertiarygroup_id AS STRING) = CAST(ci.tertiarygroup_id AS STRING)
+                    AND DATE_TRUNC(aj.first_payment, MONTH) = DATE_TRUNC(ci.mes, MONTH)
+                    AND TRIM(aj.conferencia) = '-'
+                )
                 GROUP BY tg, mes
             """).to_dataframe()
             if not df_conf.empty:
@@ -136,6 +146,13 @@ def load_fechamentos() -> pd.DataFrame:
             erros = []
             tg = str(row.get("tertiarygroup_id", ""))
             mes_row = row.get("mes")
+
+            # Deal marcado como conferido pelo chefe (conferencia = '-') não recebe flags
+            conferencia_val = row.get("conferencia")
+            if conferencia_val is not None and not pd.isna(conferencia_val) and str(conferencia_val).strip() == "-":
+                problemas.append("")
+                continue
+
             flags_bq = flags_map.get((tg, mes_row), "")
             if flags_bq:
                 erros.extend(e.strip() for e in flags_bq.split(";") if e.strip())
